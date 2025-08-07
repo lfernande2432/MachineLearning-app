@@ -153,7 +153,7 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
     var_seleccionada = st.selectbox("Selecciona una variable numérica", num_cols)
 
     if var_seleccionada:
-        df_sample = df.head(1000)
+        df_sample = df
         data = df_sample[[var_seleccionada]].dropna()
         if data.empty:
             st.warning("No hay datos disponibles para esta variable.")

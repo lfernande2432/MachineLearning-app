@@ -54,17 +54,17 @@ with tabs[2]:
     st.header("2. Preparación de los datos")
     preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
 
-# with tabs[3]:
-#     st.header("3. Procesado y análisis")
+with tabs[3]:
+    st.header("3. Procesado y análisis")
 #     st.write("Aquí se describe la preparación general de los datos...")
 #     # a=procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
 #     st.write("Aquí se muestran los resultados del procesamiento de los datos...")
 #     st.write("PRUEBA")
 
-# with tabs[4]:
-#     st.header("4. Visualización")
+with tabs[4]:
+    st.header("4. Visualización")
 #     st.write("Aquí se identifican las fuentes de los datos utilizados...")
 
-# with tabs[5]:
-#     st.header("5. Conclusiones")
+with tabs[5]:
+  st.header("5. Conclusiones")
 #     st.write("Aquí se detalla la estructura de los datos...")
