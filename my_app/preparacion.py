@@ -133,45 +133,6 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
                 st.write(df.dtypes)
     
 
-
-    dataframes = {
-        "Feature Importance": df_feature_importance,
-        "Metrics": df_metrics,
-        "Test Predictions": df_test_pred,
-        "Feature Importance Folds": df_feature_importance_folds,
-        "Leaderboard Testset": df_leaderboard_testset,
-    }
-
-    st.title("Diagrama de Caja y Bigotes con Altair")
-
-    df_name = st.selectbox("Selecciona un DataFrame", list(dataframes.keys()))
-    df = dataframes[df_name]
-
-    st.write(f"Dataframe: {df_name} — filas: {df.shape[0]}, columnas: {df.shape[1]}")
-
-    num_cols = df.select_dtypes(include=['number']).columns.tolist()
-    var_seleccionada = st.selectbox("Selecciona una variable numérica", num_cols)
-
-    @st.cache_data
-    def get_sample(df, col, max_rows=1000):
-        data = df[[col]].dropna()
-        if len(data) > max_rows:
-            data = data.sample(max_rows, random_state=42)
-        return data
-
-    if var_seleccionada:
-        data = get_sample(df, var_seleccionada)
-        if data.empty:
-            st.warning("No hay datos disponibles para esta variable.")
-        else:
-            chart = alt.Chart(data).mark_boxplot().encode(
-                y=alt.Y(f'{var_seleccionada}:Q', title=var_seleccionada),
-                x=alt.value(0),
-            ).properties(width=300, height=400)
-            st.altair_chart(chart, use_container_width=True)
-
-
-
     st.subheader("🔍 Vista previa de los datos cargados")
 
     with st.expander("📄 df_feature_importance"):   
