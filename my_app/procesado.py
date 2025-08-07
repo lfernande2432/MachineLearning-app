@@ -6,9 +6,7 @@ def mejor_modelo(df_metrics):
 
 # Columnas métricas que quieres graficar
     metric_cols = [
-        "Balanced_accuracy", "Precision_macro", "Precision_micro", "Precision_weighted",
-        "Recall_macro", "Recall_micro", "Recall_weighted", "F1_weighted", "F1_macro",
-        "Precision_0", "Recall_0", "Precision_1", "Recall_1", "Roc_auc", "PR_auc", "Roc_auc_byFold"
+        "Precision_macro", "Precision_micro"
     ]
 
     # Transformar a formato largo para Altair
