@@ -8,7 +8,7 @@ from my_app.resumen import mostrar_resumen
 from my_app.objetivos import mostrar_objetivos
 from my_app.leer_datos import cargar_datos
 from my_app.preparacion import preparar_datos
-# from my_app.procesado import procesar
+from my_app.procesado import procesar
 
 base_path = "dataset"
 
@@ -56,8 +56,7 @@ with tabs[2]:
 
 with tabs[3]:
     st.header("3. Procesado y análisis")
-#     st.write("Aquí se describe la preparación general de los datos...")
-#     # a=procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
+    procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
 #     st.write("Aquí se muestran los resultados del procesamiento de los datos...")
 #     st.write("PRUEBA")
 
