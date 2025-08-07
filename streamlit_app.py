@@ -52,7 +52,7 @@ with tabs[1]:
 
 with tabs[2]:
     st.header("2. Preparación de los datos")
-    #preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
+    preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
 
 # with tabs[3]:
 #     st.header("3. Procesado y análisis")
