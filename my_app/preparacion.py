@@ -110,7 +110,7 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
     - Modificar tipo de datos.
     """)
     convertir_a_categoria(df_feature_importance, ["feature", "model", "seed", "fold", "nV"])
-    convertir_a_categoria(df_metrics, ["Replica", "ModelBase", "Seed", "nF", "nV"])
+    #convertir_a_categoria(df_metrics, ["Replica", "ModelBase", "Seed", "nF", "nV"])
 
     cols_test_pred = [col for col in df_test_pred.columns if col.startswith('testNumFold_')] + \
                  ['Seed', 'nF', 'nV', 'ED_2Clases', 'testPredProba_KNeighborsUnif']
