@@ -1,43 +1,32 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
+import matplotlib.pyplot as plt
 
 def mejor_modelo(df_metrics):
-
-# Columnas métricas que quieres graficar
     metric_cols = [
-        "Precision_macro", "Precision_micro"
+        "Balanced_accuracy","Precision_macro", "Precision_weighted",
+        "Recall_macro", "Recall_weighted", "F1_macro", "F1_weighted","Roc_auc", "PR_auc"
     ]
-
-    # Transformar a formato largo para Altair
-    df_long = df_metrics.melt(
-        id_vars=["Tipo", "Seed", "ModelName"],
-        value_vars=metric_cols,
-        var_name="Métrica",
-        value_name="Valor"
-    )
-
     st.title("Comparación de modelos por métricas")
-
-    # Selector para la métrica
     metrica_sel = st.selectbox("Selecciona la métrica a visualizar", metric_cols)
 
-    # Filtramos el df por la métrica seleccionada
-    df_plot = df_long[df_long["Métrica"] == metrica_sel]
+    # Agrupar por modelo y calcular la media de la métrica seleccionada
+    df_grouped = df_metrics.groupby("ModelBase")[metrica_sel].mean().sort_values(ascending=False)
 
-    # Gráfico Altair: comparar distribución de la métrica por modelo
-    chart = alt.Chart(df_plot).mark_boxplot().encode(
-        x=alt.X("ModelName:N", sort='-y', title="Modelo"),
-        y=alt.Y("Valor:Q", title=metrica_sel),
-        color="ModelName:N",
-        tooltip=["ModelName", "Valor"]
-    ).properties(
-        width=700,
-        height=400,
-        title=f"Distribución de {metrica_sel} por modelo"
-    ).interactive()
+    # Crear gráfico de barras con matplotlib
+    fig, ax = plt.subplots(figsize=(10, 5))
+    df_grouped.plot(kind='bar', ax=ax, color='skyblue')
+    ax.set_ylabel(metrica_sel)
+    ax.set_xlabel("Modelo")
+    ax.set_title(f"Precisión promedio por modelo ({metrica_sel})")
+    plt.xticks(rotation=45, ha='right')
+    # Ajustar la escala del eje Y para resaltar diferencias
+    ymin = max(0, df_grouped.min() - 0.02)
+    ymax = min(1, df_grouped.max() + 0.02)
+    ax.set_ylim(ymin, ymax)
+    plt.tight_layout()
 
-    st.altair_chart(chart, use_container_width=True)
+    st.pyplot(fig)
 def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset):
-    a=1
-    st.subheader("📁 Estructura de los datos")
+    mejor_modelo(df_metrics)
+    return "Procesamiento completado"

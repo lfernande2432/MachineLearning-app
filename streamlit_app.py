@@ -56,8 +56,8 @@ with tabs[2]:
 
 with tabs[3]:
     st.header("3. Procesado y análisis")
-    procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
-#     st.write("Aquí se muestran los resultados del procesamiento de los datos...")
+    a=procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
+    st.write("Aquí se muestran los resultados del procesamiento de los datos...",a)
 #     st.write("PRUEBA")
 
 with tabs[4]:

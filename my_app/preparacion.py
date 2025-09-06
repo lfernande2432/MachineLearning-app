@@ -94,6 +94,7 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
         st.markdown("###  df_leaderboard_testset")
         unique_values = df_leaderboard_testset.nunique().sort_values(ascending=False)
         st.dataframe(unique_values.reset_index().rename(columns={"index": "Variable", 0: "Valores distintos"}))
+    
     # Eliminar columnas constantes (que solo tienen un valor único) de cada DataFrame
     df_feature_importance = df_feature_importance.loc[:, df_feature_importance.nunique() > 1]
     df_metrics = df_metrics.loc[:, df_metrics.nunique() > 1]
@@ -105,33 +106,10 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
     # Eliminar columnas específicas de df_leaderboard_testset
     df_leaderboard_testset = df_leaderboard_testset.drop(columns=["fold", "runID"], errors="ignore")
     # Eliminar columnas específicas de df_test_pred
-    df_test_pred = df_test_pred.drop(columns=["etiq-id"], errors="ignore")
-    st.markdown("""
-    - Modificar tipo de datos.
-    """)
-    convertir_a_categoria(df_feature_importance, ["feature", "model", "seed", "fold", "nV"])
-    #convertir_a_categoria(df_metrics, ["Replica", "ModelBase", "Seed", "nF", "nV"])
-
-    cols_test_pred = [col for col in df_test_pred.columns if col.startswith('testNumFold_')] + \
-                 ['Seed', 'nF', 'nV', 'ED_2Clases', 'testPredProba_KNeighborsUnif']
-    convertir_a_categoria(df_test_pred, cols_test_pred)
-
-    convertir_a_categoria(df_feature_importance_folds, ['feature', 'seed', 'nF', 'nV'])
-
-    convertir_a_categoria(df_leaderboard_testset, [
-        'seed', 'model_type', 'ag_args_fit', 'nF', 'stopping_metric', 'nV', 'stack_level'])
-
-    with st.expander("Tipos de datos"):
-            for df_name, df in {
-                "df_feature_importance": df_feature_importance,
-                "df_metrics": df_metrics,
-                "df_test_pred": df_test_pred,
-                "df_feature_importance_folds": df_feature_importance_folds,
-                "df_leaderboard_testset": df_leaderboard_testset,
-            }.items():
-                st.markdown(f"### Tipos de datos en {df_name}")
-                st.write(df.dtypes)
     
+    df_test_pred = df_test_pred.drop(columns=["etiq-id"], errors="ignore")
+
+
 
     st.subheader("🔍 Vista previa de los datos cargados")
 
@@ -150,7 +128,3 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
     with st.expander("📄 df_leaderboard_testset"):
         st.dataframe(df_leaderboard_testset.head())
 
-def convertir_a_categoria(df, cols):
-    cols_existentes = [c for c in cols if c in df.columns]
-    for c in cols_existentes:
-        df[c] = df[c].astype('category')
