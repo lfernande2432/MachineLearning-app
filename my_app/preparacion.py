@@ -69,6 +69,13 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
         # Mostrar esas filas para que puedas analizarlas
         st.dataframe(filas_con_nulos)
         st.write(f"Total de filas con nulos en las columnas seleccionadas: {filas_con_nulos.shape[0]}")
+        #Normalizar valores de las variables modelo y ModelBase
+      # Eliminar el sufijo a partir de "_" en los nombres de modelos
+    df_feature_importance['model'] = df_feature_importance['model'].str.split('_').str[0]
+    df_feature_importance_folds['model'] = df_feature_importance_folds['model'].str.split('_').str[0]
+    df_leaderboard_testset['model'] = df_leaderboard_testset['model'].str.split('_').str[0]
+
+
     # Eliminar filas con cualquier valor nulo
     df_test_pred = df_test_pred.dropna()
     st.markdown("""
@@ -94,7 +101,9 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
         st.markdown("###  df_leaderboard_testset")
         unique_values = df_leaderboard_testset.nunique().sort_values(ascending=False)
         st.dataframe(unique_values.reset_index().rename(columns={"index": "Variable", 0: "Valores distintos"}))
-    
+
+
+
     # Eliminar columnas constantes (que solo tienen un valor único) de cada DataFrame
     df_feature_importance = df_feature_importance.loc[:, df_feature_importance.nunique() > 1]
     df_metrics = df_metrics.loc[:, df_metrics.nunique() > 1]
@@ -106,11 +115,11 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
     # Eliminar columnas específicas de df_leaderboard_testset
     df_leaderboard_testset = df_leaderboard_testset.drop(columns=["fold", "runID"], errors="ignore")
     # Eliminar columnas específicas de df_test_pred
-    
     df_test_pred = df_test_pred.drop(columns=["etiq-id"], errors="ignore")
 
 
-
+   
+  
     st.subheader("🔍 Vista previa de los datos cargados")
 
     with st.expander("📄 df_feature_importance"):   
@@ -123,8 +132,21 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
         st.dataframe(df_test_pred.head())
 
     with st.expander("📄 df_feature_importance_folds"):
-        st.dataframe(df_feature_importance_folds.head())
+        st.dataframe(df_feature_importance.head())
 
     with st.expander("📄 df_leaderboard_testset"):
         st.dataframe(df_leaderboard_testset.head())
+
+    # Dataframe df_metrics balanceado por clase ModelBase
+    st.subheader("⚖️ Balanceo de df_metrics por clase ModelBase")
+    st.markdown("""
+    El conjunto de datos muestra un desbalance significativo entre las clases de la variable `ModelBase`.
+    Este desbalance puede afectar el análisis de robustez y la selección de modelos, ya que algunas clases están subrepresentadas.
+    """)
+    st.markdown("### Distribución original de `ModelBase`")
+    conteo_original = df_metrics['ModelBase'].value_counts()
+    st.bar_chart(conteo_original)
+    return df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset
+
+
 

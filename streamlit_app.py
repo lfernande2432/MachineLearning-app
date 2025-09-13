@@ -1,7 +1,4 @@
 import streamlit as st
-import os
-import glob
-import re
 import pandas as pd
 
 from my_app.resumen import mostrar_resumen
@@ -52,18 +49,15 @@ with tabs[1]:
 
 with tabs[2]:
     st.header("2. Preparación de los datos")
-    preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
+    df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset=preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
 
 with tabs[3]:
     st.header("3. Procesado y análisis")
-    a=procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
-    st.write("Aquí se muestran los resultados del procesamiento de los datos...",a)
-#     st.write("PRUEBA")
+    procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
+
 
 with tabs[4]:
     st.header("4. Visualización")
-#     st.write("Aquí se identifican las fuentes de los datos utilizados...")
 
 with tabs[5]:
   st.header("5. Conclusiones")
-#     st.write("Aquí se detalla la estructura de los datos...")
