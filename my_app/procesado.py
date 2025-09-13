@@ -118,7 +118,7 @@ def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importa
     # --- Objetivo 1: Modelos más robustos ---
     with st.expander("**3.1. Selección de los mejores modelos (SO1)**", expanded=False):
         st.markdown("""
-        El análisis de los diagramas de cajas y bigores nos permitirá analizar los mejores modelos en términos de rendimiento y consistencia.
+        El análisis de los diagramas de cajas y bigotes nos permitirá analizar los mejores modelos en términos de rendimiento y consistencia.
         """)
         mejores_modelos=S01(df_metrics)
 
