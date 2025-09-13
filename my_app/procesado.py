@@ -80,36 +80,59 @@ def SO2(df_metrics):
     
 
 def SO3(df_leaderboard_testset):
-    st.markdown("Configuraciones por modelo")
+
     modelos = df_leaderboard_testset["model"].unique()
     modelo_sel = st.selectbox("Selecciona un modelo:", modelos)
     df_modelo = df_leaderboard_testset[df_leaderboard_testset["model"] == modelo_sel]
-
+    # Valores distintos de hyperparameters
+    st.markdown(f"**Número de configuraciones distintas de hyperparameters:** {df_modelo['hyperparameters'].nunique()}")
+    # Mostrar todas las columnas
+    pd.set_option('display.max_columns', None)
     # Parsear hyperparameters
     def parse_hyperparams(hp):
         if isinstance(hp, dict):
-            return hp
-        try:
-            return ast.literal_eval(hp)
-        except Exception:
-            return {}
+            parsed = hp
+        else:
+            try:
+                parsed = ast.literal_eval(hp)
+            except Exception:
+                parsed = {}
+        # Prefijar las claves con 'hyperparameter_'
+        return {f"hyperparameter_{k}": v for k, v in parsed.items()}
 
+    # Parsear hyperparameters y expandir a columnas
     hiperparams_df = df_modelo["hyperparameters"].apply(parse_hyperparams).apply(pd.Series)
+    # Eliminar columna 'hyperparameters' y unir las columnas parseadas
+    df_modelo = pd.concat([df_modelo.reset_index(drop=True), hiperparams_df.reset_index(drop=True)], axis=1)
 
-    # Mantener las columnas de F1 en el DataFrame final
-    f1_cols = [col for col in df_modelo.columns if "f1" in col.lower()]
-    df_final = pd.concat([df_modelo[f1_cols].reset_index(drop=True), hiperparams_df.reset_index(drop=True)], axis=1)
+    # Imprimir dataframes
+    st.dataframe(df_modelo)
 
-    st.dataframe(df_final)
-    st.markdown("**Número de valores distintos por columna:**")
-    distinct_counts = df_final.apply(lambda col: col.nunique())
+    # Número de valores distintos de los hiperparámetros
+    st.markdown("**Número de valores distintos por hiperparámetro:**")
+    hyperparam_cols = [col for col in df_modelo.columns if col.startswith("hyperparameter_")]
+    distinct_counts = df_modelo[hyperparam_cols].apply(lambda col: col.nunique())
     st.dataframe(distinct_counts.rename("Valores distintos"))
-    # Mostrar valores distintos para columnas que no son F1
-    otras_cols = [col for col in df_final.columns if col not in f1_cols]
-    if otras_cols:
-        st.markdown("**Valores distintos para columnas que no son F1:**")
-        for col in otras_cols:
-            st.write(f"- **{col}**: {df_final[col].unique()}")
+
+    # Gráfica: métrica en eje y y columna hyperparameters en eje x (sin parsear)
+    metricas = ["score_test", "balanced_accuracy", "f1", "f1_macro",
+                "f1_micro", "roc_auc", "average_precision", "precision", "recall",
+                "log_loss"]
+    metrica_sel = st.selectbox("Selecciona una métrica para graficar:", metricas, key="so3_metricas")
+    if metrica_sel in df_modelo.columns and "hyperparameters" in df_modelo.columns:
+        ranking = alt.Chart(df_modelo).mark_bar().encode(
+            y=alt.Y(f"mean({metrica_sel}):Q", title=f"Media de {metrica_sel}"),
+            x=alt.X("hyperparameters:N", sort="-x", title="Hyperparameters"),
+            tooltip=["hyperparameters", f"mean({metrica_sel}):Q", f"stddev({metrica_sel}):Q"]
+        ).properties(
+            width=700,
+            height=400,
+            title=f"Ranking de configuraciones según {metrica_sel}"
+        )
+
+        st.altair_chart(ranking, use_container_width=True)
+
+
 
 
 
@@ -130,8 +153,7 @@ def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importa
 
     # --- Objetivo 3: Mejores configuraciones ---
     with st.expander("**3.3. Selección de las mejores configuraciones (SO3)**", expanded=False):
-        df_leaderboard_testset_mejores = df_leaderboard_testset[df_leaderboard_testset["model"].isin(mejores_modelos)]
-        SO3(df_leaderboard_testset_mejores)
+        SO3(df_leaderboard_testset)
     
     
     # --- Objetivo 4: Variables más relevantes ---
