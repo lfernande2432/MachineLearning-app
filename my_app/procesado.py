@@ -75,19 +75,15 @@ def SO2(df_metrics):
         ),
         use_container_width=True
     )
-
-
-    
-
+   
 def SO3(df_leaderboard_testset):
-
     modelos = df_leaderboard_testset["model"].unique()
     modelo_sel = st.selectbox("Selecciona un modelo:", modelos)
     df_modelo = df_leaderboard_testset[df_leaderboard_testset["model"] == modelo_sel]
+
     # Valores distintos de hyperparameters
-    st.markdown(f"**Número de configuraciones distintas de hyperparameters:** {df_modelo['hyperparameters'].nunique()}")
-    # Mostrar todas las columnas
-    pd.set_option('display.max_columns', None)
+    st.markdown(f"Número de configuraciones distintas de hyperparameters: {df_modelo['hyperparameters'].nunique()}")
+
     # Parsear hyperparameters
     def parse_hyperparams(hp):
         if isinstance(hp, dict):
@@ -97,33 +93,49 @@ def SO3(df_leaderboard_testset):
                 parsed = ast.literal_eval(hp)
             except Exception:
                 parsed = {}
-        # Prefijar las claves con 'hyperparameter_'
-        return {f"hyperparameter_{k}": v for k, v in parsed.items()}
+        return {f"hyperparameter_{k}": v if v is not None else "None" for k, v in parsed.items()}
 
-    # Parsear hyperparameters y expandir a columnas
     hiperparams_df = df_modelo["hyperparameters"].apply(parse_hyperparams).apply(pd.Series)
-    # Eliminar columna 'hyperparameters' y unir las columnas parseadas
     df_modelo = pd.concat([df_modelo.reset_index(drop=True), hiperparams_df.reset_index(drop=True)], axis=1)
 
-    # Imprimir dataframes
-    st.dataframe(df_modelo)
-
-    # Número de valores distintos de los hiperparámetros
-    st.markdown("**Número de valores distintos por hiperparámetro:**")
+    # Valores distintos por hiperparámetro
+    st.markdown("*Valores distintos por hiperparámetro:*")
     hyperparam_cols = [col for col in df_modelo.columns if col.startswith("hyperparameter_")]
-    distinct_counts = df_modelo[hyperparam_cols].apply(lambda col: col.nunique())
-    st.dataframe(distinct_counts.rename("Valores distintos"))
+    distinct_summary = (
+        df_modelo[hyperparam_cols]
+        .fillna("None")
+        .agg([lambda x: x.nunique(), lambda x: list(x.unique())])
+        .T
+        .reset_index()
+    )
+    distinct_summary.columns = ["Hiperparámetro", "Nº valores distintos", "Valores distintos"]
 
-    # Gráfica: métrica en eje y y columna hyperparameters en eje x (sin parsear)
+    # Convertir la columna de listas a strings
+    distinct_summary["Valores distintos"] = distinct_summary["Valores distintos"].apply(lambda x: ", ".join(map(str, x)))
+
+    st.dataframe(distinct_summary)
+
+    # Selección de métrica
     metricas = ["score_test", "balanced_accuracy", "f1", "f1_macro",
                 "f1_micro", "roc_auc", "average_precision", "precision", "recall",
                 "log_loss"]
     metrica_sel = st.selectbox("Selecciona una métrica para graficar:", metricas, key="so3_metricas")
+
     if metrica_sel in df_modelo.columns and "hyperparameters" in df_modelo.columns:
-        ranking = alt.Chart(df_modelo).mark_bar().encode(
-            y=alt.Y(f"mean({metrica_sel}):Q", title=f"Media de {metrica_sel}"),
-            x=alt.X("hyperparameters:N", sort="-x", title="Hyperparameters"),
-            tooltip=["hyperparameters", f"mean({metrica_sel}):Q", f"stddev({metrica_sel}):Q"]
+        # Agrupar por configuraciones únicas de hyperparameters
+        df_unique = df_modelo.groupby("hyperparameters").agg(
+            mean_metric=(metrica_sel, "mean"),
+            std_metric=(metrica_sel, "std")
+        ).reset_index()
+
+        # Crear IDs cortos para la gráfica
+        df_unique["config_id"] = [f"Config_{i+1}" for i in range(len(df_unique))]
+
+        # Gráfica
+        ranking = alt.Chart(df_unique).mark_bar().encode(
+            y=alt.Y("mean_metric:Q", title=f"Media de {metrica_sel}"),
+            x=alt.X("config_id:N", sort="-y", title="Configuración"),
+            tooltip=["config_id", "hyperparameters", "mean_metric:Q", "std_metric:Q"]
         ).properties(
             width=700,
             height=400,
@@ -132,9 +144,63 @@ def SO3(df_leaderboard_testset):
 
         st.altair_chart(ranking, use_container_width=True)
 
+        # Tabla de correspondencia
+        st.markdown("*Correspondencia entre identificadores y configuraciones de hyperparameters:*")
+        st.dataframe(df_unique[["config_id", "hyperparameters"]])
 
+def SO4(df_feature_importance_mejores):
 
+    # Filtrar filas
+    df_nv8 = df_feature_importance_mejores[df_feature_importance_mejores["nV"] == 8]
+    df_nv19 = df_feature_importance_mejores[df_feature_importance_mejores["nV"] == 19]
 
+    # Features únicas
+    features_nv8 = df_nv8["feature"].unique()
+    features_nv19 = df_nv19["feature"].unique()
+
+    # Todas las features únicas de ambos conjuntos
+    all_features = sorted(set(features_nv8).union(features_nv19))
+
+    # Crear DataFrame indicando presencia/ausencia
+    df_comparacion = pd.DataFrame({
+        "feature": all_features,
+        "en_nv8": [f in features_nv8 for f in all_features],
+        "en_nv19": [f in features_nv19 for f in all_features]
+    })
+
+    # Mostrar tabla en Streamlit
+    st.markdown("*Tabla de presencia de features en nV=8 y nV=19*")
+    st.dataframe(df_comparacion)
+
+    modelos = df_feature_importance_mejores["model"].unique()
+    modelo_sel = st.selectbox("Selecciona un modelo para ver su importancia de variables:", modelos, key="so4_modelos")
+    df_modelo = df_feature_importance_mejores[df_feature_importance_mejores["model"] == modelo_sel]
+    # Checkbox para seleccionar mostrar solo nv8 o todas
+    solo_nv8 = st.checkbox("Mostrar solo features de nV=8", value=False)
+
+    # Filtrar según el checkbox
+    if solo_nv8:
+        df_grafico = df_modelo[df_modelo["nV"] == 8]
+    else:
+        df_grafico = df_modelo.copy()
+    # Gráfica de barras horizontales
+    barra_importancia = (
+        alt.Chart(df_grafico)
+        .mark_bar()
+        .encode(
+            x=alt.X("importance:Q", title="Importancia"),
+            y=alt.Y("feature:N", sort='-x', title="Variable"),
+            color=alt.Color("importance:Q", scale=alt.Scale(scheme='blues'), legend=None),
+            tooltip=["feature", "importance"]
+        )
+        .properties(
+            width=700,
+            height=700,
+            title=f"Importancia de variables para el modelo {modelo_sel}"
+        )
+    )
+
+    st.altair_chart(barra_importancia, use_container_width=True)
 
 def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset):
 
@@ -159,9 +225,8 @@ def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importa
     # --- Objetivo 4: Variables más relevantes ---
 
     with st.expander("**3.4. Selección de las variables más relevantes (SO4)**", expanded=False):
-        st.markdown("""
-        El análisis de importancia de variables nos permite identificar qué características tienen el mayor impacto en las predicciones del modelo. Al centrarnos en las variables más relevantes, podemos simplificar el modelo, mejorar su interpretabilidad y potencialmente aumentar su rendimiento al reducir el ruido.
-        """)
+        df_feature_importance_mejores=df_feature_importance[df_feature_importance["model"].isin(mejores_modelos)]
+        SO4(df_feature_importance_mejores)
     
     # --- Objetivo 5: Análisis detallado de la métrica ROC AUC por fold  ---
     with st.expander("3.5. Análisis detallado de la métrica ROC AUC por fold (SO5)", expanded=False):
