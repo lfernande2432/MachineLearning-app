@@ -50,7 +50,7 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
         y=alt.Y(metrica_seleccionada + ':Q', scale=alt.Scale(zero=False))
     )
     st.altair_chart(chart, use_container_width=True)
-
+'''
     # Pestañas dinámicas para cada modelo
     tabs = st.tabs(mejores_modelos)
     for i, modelo in enumerate(mejores_modelos):
@@ -154,3 +154,4 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             st.altair_chart(barra_importancia, use_container_width=True)
 
             st.markdown(f"### Análisis del Roc_auc por Fold para el: **{modelo}**")
+'''
