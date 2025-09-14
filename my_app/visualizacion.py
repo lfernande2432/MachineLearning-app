@@ -83,6 +83,7 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             df_configs.reset_index(inplace=True)
             df_configs.rename(columns={"index": "config_id"}, inplace=True)
 
+            df_configs = df_configs.astype(str)
             st.dataframe(df_configs)
 '''
             # Ranking de configuraciones
