@@ -71,7 +71,7 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             )
             st.altair_chart(chart_modelo + linea_media, use_container_width=True)
 
-'''
+
             # --- Configuraciones ---
             st.markdown(f"### Hiperparámetros del modelo: **{modelo}**")
             df_modelo_testset = df_leaderboard_testset[df_leaderboard_testset['ModelBase'] == modelo]
@@ -84,7 +84,7 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             df_configs.rename(columns={"index": "config_id"}, inplace=True)
 
             st.dataframe(df_configs)
-
+'''
             # Ranking de configuraciones
             df_unique = df_modelo_testset.groupby("hyperparameters").agg(
                 mean_metric=(metrica_seleccionada, "mean"),
