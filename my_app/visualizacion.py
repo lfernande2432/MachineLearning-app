@@ -85,7 +85,7 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
 
             df_configs = df_configs.astype(str)
             st.dataframe(df_configs)
-'''
+
             # Ranking de configuraciones
             df_unique = df_modelo_testset.groupby("hyperparameters").agg(
                 mean_metric=(metrica_seleccionada, "mean"),
@@ -156,4 +156,3 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             st.altair_chart(barra_importancia, use_container_width=True)
 
             st.markdown(f"### Análisis del Roc_auc por Fold para el: **{modelo}**")
-'''
