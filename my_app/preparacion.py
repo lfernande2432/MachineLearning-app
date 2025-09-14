@@ -73,7 +73,6 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
       # Eliminar el sufijo a partir de "_" en los nombres de modelos
     df_feature_importance['model'] = df_feature_importance['model'].str.split('_').str[0]
     df_feature_importance_folds['model'] = df_feature_importance_folds['model'].str.split('_').str[0]
-    df_leaderboard_testset['model'] = df_leaderboard_testset['model'].str.split('_').str[0]
 
 
     # Eliminar filas con cualquier valor nulo
@@ -111,11 +110,9 @@ def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_i
     df_feature_importance_folds = df_feature_importance_folds.loc[:, df_feature_importance_folds.nunique() > 1]
     df_leaderboard_testset = df_leaderboard_testset.loc[:, df_leaderboard_testset.nunique() > 1]
     # Eliminar columnas específicas de df_feature_importance_folds
-    df_feature_importance_folds = df_feature_importance_folds.drop(columns=["fold", "runID"], errors="ignore")
+    df_feature_importance_folds = df_feature_importance_folds.drop(columns=["runID"], errors="ignore")
     # Eliminar columnas específicas de df_leaderboard_testset
-    df_leaderboard_testset = df_leaderboard_testset.drop(columns=["fold", "runID"], errors="ignore")
-    # Eliminar columnas específicas de df_test_pred
-    df_test_pred = df_test_pred.drop(columns=["etiq-id"], errors="ignore")
+    df_leaderboard_testset = df_leaderboard_testset.drop(columns=[ "runID"], errors="ignore")
 
 
    

@@ -2,7 +2,7 @@ import streamlit as st
 import altair as alt
 import pandas as pd
 import ast
-
+import numpy as np
 def S01(df_metrics):
     metric_cols = [
         "Balanced_accuracy", "Precision_macro", "Precision_micro", "Precision_weighted",
@@ -75,11 +75,12 @@ def SO2(df_metrics):
         ),
         use_container_width=True
     )
-   
+
 def SO3(df_leaderboard_testset):
-    modelos = df_leaderboard_testset["model"].unique()
+    df_leaderboard_testset['model_simplified'] = df_leaderboard_testset['model'].str.split('_').str[0]
+    modelos = sorted(df_leaderboard_testset['model_simplified'].unique())
     modelo_sel = st.selectbox("Selecciona un modelo:", modelos)
-    df_modelo = df_leaderboard_testset[df_leaderboard_testset["model"] == modelo_sel]
+    df_modelo = df_leaderboard_testset[df_leaderboard_testset['model_simplified'] == modelo_sel].copy()
 
     # Valores distintos de hyperparameters
     st.markdown(f"Número de configuraciones distintas de hyperparameters: {df_modelo['hyperparameters'].nunique()}")
@@ -186,11 +187,15 @@ def SO4(df_feature_importance_mejores):
     # Gráfica de barras horizontales
     barra_importancia = (
         alt.Chart(df_grafico)
-        .mark_bar()
+        .mark_tick()
         .encode(
             x=alt.X("importance:Q", title="Importancia"),
-            y=alt.Y("feature:N", sort='-x', title="Variable"),
-            color=alt.Color("importance:Q", scale=alt.Scale(scheme='blues'), legend=None),
+            y=alt.Y("feature:N", sort=alt.EncodingSortField(field="importance", op="max", order="descending"), title="Variable"),
+            color=alt.Color(
+                "importance:Q",
+                scale=alt.Scale(scheme='redblue', domainMid=0),
+                legend=None
+            ),
             tooltip=["feature", "importance"]
         )
         .properties(
@@ -202,15 +207,169 @@ def SO4(df_feature_importance_mejores):
 
     st.altair_chart(barra_importancia, use_container_width=True)
 
-def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset):
 
+def SO5(df_leaderboard_testset, df_metrics):
+
+    # Selección del modelo
+    modelos = sorted(df_leaderboard_testset["model"].unique())
+    modelo_sel = st.selectbox("Selecciona un modelo", modelos)
+    df = df_leaderboard_testset[df_leaderboard_testset["model"] == modelo_sel].copy()
+    
+    # Obtener y ordenar los valores únicos de la semilla como números
+    semillas = sorted(df["seed"].unique())
+
+    semillas_sel = st.multiselect(
+        "Selecciona las semillas",
+        semillas,
+        default=[0, 7]
+    )
+
+    # Filtrar el DataFrame
+    df = df[df["seed"].isin(semillas_sel)]
+    df['seed'] = df['seed'].astype(str)
+    if df.empty:
+        st.warning("No hay datos para mostrar con las semillas seleccionadas.")
+        return
+
+    # ---- Preparar df_metrics ----
+    df_metrics['model'] = np.where(
+    df_metrics['Replica'] == 0,
+    df_metrics['ModelBase'],
+    df_metrics['ModelBase'] + '_r' + df_metrics['Replica'].astype(str)
+)
+    df_line = df_metrics[df_metrics["model"] == modelo_sel].copy()
+
+    # ---- Crear una gráfica por cada nF ----
+    charts = []
+    for nF in sorted(df["nF"].unique()):
+        df_nF = df[df["nF"] == nF]
+        df_line_nF = df_line[df_line["nF"] == nF]
+
+        base = alt.Chart(df_nF).mark_point(size=50).encode(
+            x=alt.X('fold:N', title='Fold'),
+            y=alt.Y('roc_auc', title='ROC AUC (fold)'),
+            color=alt.Color('seed', legend=alt.Legend(title="Semilla")),
+            tooltip=['fold', 'roc_auc', 'seed']
+        ).transform_filter(
+            alt.datum.fold <= alt.datum.nF
+        ).properties(
+            width=200,
+            height=200
+        )
+        roc_mean = df_line_nF["Roc_auc"].mean()  # media de todos los valores
+        line = alt.Chart(pd.DataFrame({"Roc_auc": [roc_mean]})).mark_rule(
+            color="black",
+            strokeDash=[4, 2]   # línea discontinua
+        ).encode(
+            y="Roc_auc:Q",
+            tooltip=["Roc_auc:Q"]
+        )
+
+        charts.append(
+            alt.layer(base, line).properties(title=f"nF = {nF}")
+        )
+
+    # Concatenar las gráficas verticalmente
+    final_chart = alt.vconcat(*charts).properties(
+        title=f"Rendimiento por nF para el modelo: {modelo_sel}"
+    )
+
+    st.altair_chart(final_chart, use_container_width=True)
+def convertir_a_predicciones(df, threshold=0.5):
+    # Buscar columnas de probabilidades
+    prob_cols = [c for c in df.columns if c.startswith("testPredProba_")]
+    
+    # Crear columnas de predicciones binarias
+    for col in prob_cols:
+        pred_col = col.replace("testPredProba_", "pred_")
+        df[pred_col] = (df[col] >= threshold).astype(int)
+    
+    return df
+
+def graficar_predicciones_por_instancia(df_pred):
+    # Columnas de predicción
+    pred_cols = [c for c in df_pred.columns if c.startswith("pred_")]
+    
+    # Transformar a formato largo
+    df_melt = df_pred.melt(
+        id_vars=["etiq-id", "ED_2Clases"],
+        value_vars=pred_cols,
+        var_name="Modelo",
+        value_name="Prediccion"
+    )
+    df_melt["Modelo"] = df_melt["Modelo"].str.replace("pred_", "")
+    
+    # Columna de error
+    df_melt["Error"] = (df_melt["Prediccion"] != df_melt["ED_2Clases"]).astype(int)
+    
+    # Selección interactiva de instancia
+    instancia_seleccionada = st.selectbox("Selecciona la instancia (etiq-id):", df_melt["etiq-id"].unique())
+    df_filtrado = df_melt[df_melt["etiq-id"] == instancia_seleccionada]
+    
+    # Contar cuántas veces cada modelo predice cada etiqueta
+    counts = df_filtrado.groupby(["Modelo", "Prediccion"]).size().reset_index(name="Freq")
+    df_filtrado = df_filtrado.merge(counts, on=["Modelo", "Prediccion"], how="left")
+    
+    # Círculos: predicciones de los modelos con degradado por frecuencia
+    pred_chart = alt.Chart(df_filtrado).mark_circle(size=150).encode(
+        x=alt.X('Modelo:N', title='Modelo'),
+        y=alt.Y('Prediccion:O', title='Predicción (0/1)', sort=[0,1]),
+        color=alt.Color('Error:N', title='Predicciones', scale=alt.Scale(domain=[0,1], range=['green','red'])),
+        opacity=alt.Opacity('Freq:Q', scale=alt.Scale(range=[0.2,1]), legend=None),  # sin leyenda
+        tooltip=['etiq-id', 'Modelo', 'Prediccion', 'ED_2Clases', 'Error', 'Freq']
+    )
+    
+    # Solo el gráfico de predicciones (sin línea)
+    chart = pred_chart.properties(
+        width=700,
+        height=300,
+        title=f'Predicciones para la instancia {instancia_seleccionada}'
+    ).interactive()
+    
+    return chart
+
+
+def SO6(df_test_pred, mejores_modelos, threshold=0.5):
+    # 1. Filtrar columnas de probabilidades de los mejores modelos
+    pattern = "|".join([f"testPredProba_{m}(_.*)?$" for m in mejores_modelos])
+    prob_cols = df_test_pred.filter(regex=pattern)
+
+    # 2. Convertir probabilidades a predicciones binarias
+    df_pred = prob_cols.apply(lambda col: (col >= threshold).astype(int))
+    
+    # 3. Renombrar columnas: testPredProba_ -> pred_
+    df_pred.columns = [c.replace("testPredProba_", "pred_") for c in df_pred.columns]
+
+    # 4. Añadir las columnas 'etiq-id' y 'ED_2Clases'
+    df_pred = pd.concat([df_pred, df_test_pred[["etiq-id", "ED_2Clases"]]], axis=1)
+
+    # Interacción para seleccionar el umbral
+        # Columnas de predicción
+    pred_cols = [c for c in df_pred.columns if c.startswith("pred_")]
+
+    # Slider interactivo: mínimo de modelos que deben fallar
+    min_modelos_fallidos = st.slider(
+        "Número mínimo de modelos con predicción distinta a la etiqueta",
+        min_value=1,
+        max_value=len(pred_cols),
+        value=1
+    )
+
+    # Contar por fila cuántos modelos difieren de la etiqueta
+    errores_por_fila = (df_pred[pred_cols] != df_pred["ED_2Clases"].values[:, None]).sum(axis=1)
+
+    # Filtrar filas donde al menos 'min_modelos_fallidos' modelos fallan
+    df_filtrado = df_pred[errores_por_fila >= min_modelos_fallidos]
+    st.altair_chart(graficar_predicciones_por_instancia(df_filtrado), use_container_width=True)
+
+
+def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset):
     # --- Objetivo 1: Modelos más robustos ---
     with st.expander("**3.1. Selección de los mejores modelos (SO1)**", expanded=False):
         st.markdown("""
         El análisis de los diagramas de cajas y bigotes nos permitirá analizar los mejores modelos en términos de rendimiento y consistencia.
         """)
         mejores_modelos=S01(df_metrics)
-
 
     # --- Objetivo 2: Mejores semillas ---
     with st.expander("**3.2. Selección de las mejores semillas (SO2)**", expanded=False):
@@ -229,15 +388,13 @@ def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importa
         SO4(df_feature_importance_mejores)
     
     # --- Objetivo 5: Análisis detallado de la métrica ROC AUC por fold  ---
-    with st.expander("3.5. Análisis detallado de la métrica ROC AUC por fold (SO5)", expanded=False):
-        st.markdown("""
-        El análisis de la métrica ROC AUC por fold nos permite evaluar la estabilidad y consistencia del rendimiento del modelo a través de diferentes particiones de los datos. Al examinar cómo varía esta métrica en cada fold, podemos identificar posibles problemas de sobreajuste y asegurar que el modelo generalice bien a datos no vistos.
-        """)
+    with st.expander("**3.5. Análisis detallado de la métrica ROC AUC por fold (SO5)**", expanded=False):
+        SO5( df_leaderboard_testset,df_metrics)
     # --- Objetivo 6: Análisis de errores y casos difíciles  ---
-    with st.expander("3.6. Análisis de errores y casos difíciles (SO6)", expanded=False):
+    with st.expander("**3.6. Análisis de errores y casos difíciles (SO6)**", expanded=False):
         st.markdown("""
         El análisis de errores y casos difíciles nos ayuda a comprender mejor las limitaciones del modelo y las áreas donde puede necesitar mejoras. Al identificar patrones en los errores, podemos ajustar el modelo o los datos para abordar estos desafíos específicos, mejorando así la precisión y la confiabilidad del modelo en situaciones del mundo real.
         """)
-    # st.subheader("3.3. Selección de las mejores semillas (SO1)")
-    #...
+        SO6(df_test_pred,mejores_modelos)
+
 
