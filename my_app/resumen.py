@@ -1,6 +1,6 @@
 
 import streamlit as st
-
+@st.cache_data
 def mostrar_resumen():
     st.markdown("""
     <div style='text-align: justify'>

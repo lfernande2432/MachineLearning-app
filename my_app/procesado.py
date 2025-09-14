@@ -420,5 +420,6 @@ def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importa
         El análisis de errores y casos difíciles nos ayuda a comprender mejor las limitaciones del modelo y las áreas donde puede necesitar mejoras. Al identificar patrones en los errores, podemos ajustar el modelo o los datos para abordar estos desafíos específicos, mejorando así la precisión y la confiabilidad del modelo en situaciones del mundo real.
         """)
         SO6(df_test_pred,mejores_modelos)
+    return mejores_modelos
 
 

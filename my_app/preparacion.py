@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
+@st.cache_data
 def preparar_datos(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset):
 
     st.markdown("""

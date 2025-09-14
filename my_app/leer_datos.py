@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import streamlit as st
 
+@st.cache_data(show_spinner="Cargando datos...")
 def cargar_pickle_dividido(filepath_base):
     """
     Carga un archivo pickle o varios archivos divididos con sufijo _partX.pkl

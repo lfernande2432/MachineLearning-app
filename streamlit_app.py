@@ -6,7 +6,7 @@ from my_app.objetivos import mostrar_objetivos
 from my_app.leer_datos import cargar_datos
 from my_app.preparacion import preparar_datos
 from my_app.procesado import procesar
-
+from my_app.visualizacion import visualizar
 base_path = "dataset"
 
 
@@ -53,11 +53,13 @@ with tabs[2]:
 
 with tabs[3]:
     st.header("3. Procesado y análisis")
-    procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
+    mejores_modelos=procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importance_folds, df_leaderboard_testset)
 
 
 with tabs[4]:
     st.header("4. Visualización")
+    mejores_semillas = {'RandomForest': [42, 51], 'RandomForestEntr':[27431,23], 'RandomForestGini':[27431, 100],  'CatBoost': [23, 51], 'LightGBMLarge': [51, 83]}
+    visualizar(df_metrics,mejores_modelos, df_leaderboard_testset, df_feature_importance)
 
 with tabs[5]:
   st.header("5. Conclusiones")
