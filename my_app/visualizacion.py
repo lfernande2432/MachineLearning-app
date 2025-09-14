@@ -68,7 +68,11 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             ).properties(width=600)
 
             # Línea de media global
-            linea_media = alt.Chart(df_media).mark_rule(color="red", size=2).encode(
+
+            media_global = df_modelo[metrica_seleccionada].mean()
+            df_media_modelo = pd.DataFrame({metrica_seleccionada: [media_global]})
+
+            linea_media = alt.Chart(df_media_modelo).mark_rule(color="red", size=2).encode(
                 y=f"{metrica_seleccionada}:Q"
             )
             st.altair_chart(chart_modelo + linea_media, use_container_width=True)
@@ -206,6 +210,64 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
 
             st.altair_chart(final_chart, use_container_width=True)
         ##   Análisis del Roc_auc por Fold para el modelo
-        st.markdown(f"### Errores de clasificación por modelo: **{modelo}**")
+            st.markdown(f"### Errores de clasificación por modelo: **{modelo}**")
 
- 
+            # 1. Seleccionar todas las columnas de predicciones del modelo (todas las réplicas)
+            pattern = f"testPredProba_{modelo}(_.*)?$"
+            prob_cols = df_test_pred.filter(regex=pattern)
+
+            # 2. Convertir probabilidades a predicciones binarias (umbral = 0.5)
+            df_pred = prob_cols.apply(lambda col: (col >= 0.5).astype(int))
+
+            # 3. Añadir columnas reales
+            df_pred = pd.concat([df_pred, df_test_pred[["etiq-id", "ED_2Clases"]]], axis=1)
+
+            # 4. Comparar todas las réplicas con la clase real
+            #    Creamos un dataframe en formato "long" para juntar réplicas
+            df_long = df_pred.melt(
+                id_vars=["etiq-id", "ED_2Clases"],
+                value_vars=prob_cols.columns,
+                var_name="réplica",
+                value_name="pred"
+            )
+
+            # 5. Marcar acierto/error
+            df_long["correcto"] = (df_long["pred"] == df_long["ED_2Clases"]).astype(int)
+
+            # 6. Calcular porcentaje global de correctos/incorrectos
+            df_pie = df_long["correcto"].value_counts(normalize=True).reset_index()
+            df_pie.columns = ["correcto", "porcentaje"]
+            df_pie["Predicción"] = df_pie["correcto"].map({1: "Correcto", 0: "Incorrecto"})
+
+            # 7. Gráfico de sectores
+            pie = (
+                alt.Chart(df_pie)
+                .mark_arc()
+                .encode(
+                    theta="porcentaje:Q",
+                    color=alt.Color("Predicción:N", scale=alt.Scale(scheme="set1")),
+                    tooltip=["Predicción", alt.Tooltip("porcentaje:Q", format=".1%")]
+                )
+                .properties(title=f"Porcentaje de clasificaciones correctas (todas las réplicas) - {modelo}")
+            )
+
+            st.altair_chart(pie, use_container_width=True)
+
+            # Contar correctos e incorrectos por etiq-id
+            df_resumen = (
+                df_long.groupby("etiq-id")["correcto"]
+                .agg(
+                    incorrectas=lambda x: (x == 0).sum(),
+                    correctas=lambda x: (x == 1).sum()
+                )
+                .reset_index()
+            )
+
+            # Filtrar solo las instancias con errores
+            df_resumen = df_resumen[df_resumen["incorrectas"] > 0]
+
+            # Ordenar por mayor número de errores
+            df_resumen = df_resumen.sort_values("incorrectas", ascending=False)
+
+            st.write(f"##### Resumen de clasificaciones por instancia para el modelo **{modelo}**")
+            st.dataframe(df_resumen)
