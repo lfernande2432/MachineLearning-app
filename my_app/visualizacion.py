@@ -57,7 +57,7 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
         with tabs[i]:
             st.markdown(f"### Métricas por semilla para el modelo: **{modelo}**")
             df_modelo = df_metrics_filtrado[df_metrics_filtrado['ModelBase'] == modelo]
-'''
+
             # Boxplot por semilla
             chart_modelo = alt.Chart(df_modelo).mark_boxplot(extent='min-max').encode(
                 x='Seed:O', 
@@ -71,6 +71,7 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             )
             st.altair_chart(chart_modelo + linea_media, use_container_width=True)
 
+'''
             # --- Configuraciones ---
             st.markdown(f"### Hiperparámetros del modelo: **{modelo}**")
             df_modelo_testset = df_leaderboard_testset[df_leaderboard_testset['ModelBase'] == modelo]
