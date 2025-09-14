@@ -50,14 +50,14 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
         y=alt.Y(metrica_seleccionada + ':Q', scale=alt.Scale(zero=False))
     )
     st.altair_chart(chart, use_container_width=True)
-'''
+
     # Pestañas dinámicas para cada modelo
     tabs = st.tabs(mejores_modelos)
     for i, modelo in enumerate(mejores_modelos):
         with tabs[i]:
             st.markdown(f"### Métricas por semilla para el modelo: **{modelo}**")
             df_modelo = df_metrics_filtrado[df_metrics_filtrado['ModelBase'] == modelo]
-
+'''
             # Boxplot por semilla
             chart_modelo = alt.Chart(df_modelo).mark_boxplot(extent='min-max').encode(
                 x='Seed:O', 
