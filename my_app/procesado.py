@@ -117,9 +117,7 @@ def SO3(df_leaderboard_testset):
     st.dataframe(distinct_summary)
 
     # Selección de métrica
-    metricas = ["score_test", "balanced_accuracy", "f1", "f1_macro",
-                "f1_micro", "roc_auc", "average_precision", "precision", "recall",
-                "log_loss"]
+    metricas = ["roc_auc", "average_precision", "f1_macro", "balanced_accuracy", "log_loss", "precision", "recall"]
     metrica_sel = st.selectbox("Selecciona una métrica para graficar:", metricas, key="so3_metricas")
 
     if metrica_sel in df_modelo.columns and "hyperparameters" in df_modelo.columns:
@@ -131,23 +129,48 @@ def SO3(df_leaderboard_testset):
 
         # Crear IDs cortos para la gráfica
         df_unique["config_id"] = [f"Config_{i+1}" for i in range(len(df_unique))]
+        # Encontrar la mejor configuración (max para la mayoría de métricas, min para log_loss)
+        if metrica_sel == "log_loss":
+            best_config_id = df_unique.loc[df_unique["mean_metric"].idxmin()]["config_id"]
+        else:
+            best_config_id = df_unique.loc[df_unique["mean_metric"].idxmax()]["config_id"]
 
+        # Añadir un punto o tick para la mejor configuración
+        best_config_marker = alt.Chart(df_unique[df_unique["config_id"] == best_config_id]).mark_text(
+            text='✓',       # símbolo de check
+            color='green',
+            fontSize=30,    # tamaño del check
+            dy=-10          # desplazamiento vertical hacia arriba de la barra
+        ).encode(
+            x=alt.X("config_id:N", sort="-y"),
+            y=alt.Y("mean_metric:Q", scale=alt.Scale(zero=False)),
+            tooltip=["config_id", "mean_metric:Q"]
+        )
         # Gráfica
-        ranking = alt.Chart(df_unique).mark_bar().encode(
-            y=alt.Y("mean_metric:Q", title=f"Media de {metrica_sel}"),
+        bars = alt.Chart(df_unique).mark_bar().encode(
+            y=alt.Y("mean_metric:Q", title=f"Media de {metrica_sel}",scale=alt.Scale(zero=False)),
             x=alt.X("config_id:N", sort="-y", title="Configuración"),
-            tooltip=["config_id", "hyperparameters", "mean_metric:Q", "std_metric:Q"]
-        ).properties(
+            tooltip=["config_id", "hyperparameters", "mean_metric:Q", "std_metric:Q"],
+            color=alt.condition(
+                alt.datum.config_id == best_config_id,
+                alt.value("green"),  # Color especial para la mejor configuración
+                alt.value("steelblue")  # Color estándar para las demás
+            )
+        )
+
+        # Combina los dos gráficos usando alt.layer()
+        ranking = alt.layer(bars, best_config_marker).properties(
             width=700,
             height=400,
             title=f"Ranking de configuraciones según {metrica_sel}"
-        )
+        ).interactive()
 
         st.altair_chart(ranking, use_container_width=True)
 
         # Tabla de correspondencia
         st.markdown("*Correspondencia entre identificadores y configuraciones de hyperparameters:*")
         st.dataframe(df_unique[["config_id", "hyperparameters"]])
+
 
 def SO4(df_feature_importance_mejores):
 
@@ -378,7 +401,8 @@ def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importa
 
     # --- Objetivo 3: Mejores configuraciones ---
     with st.expander("**3.3. Selección de las mejores configuraciones (SO3)**", expanded=False):
-        SO3(df_leaderboard_testset)
+        df_leaderboard_testset_mejores = df_leaderboard_testset[df_leaderboard_testset["model"].str.split('_').str[0].isin(mejores_modelos)]
+        SO3(df_leaderboard_testset_mejores)
     
     
     # --- Objetivo 4: Variables más relevantes ---
