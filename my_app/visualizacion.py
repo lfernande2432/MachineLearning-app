@@ -10,7 +10,9 @@ def parse_hyperparams(hp):
     except Exception:
         return {}
 
-def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_importance):
+def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_importance,df_test_pred):
+    mejores_semillas = {'RandomForest': [42, 51], 'RandomForestEntr':[27431,23], 'RandomForestGini':[27431, 100],  'CatBoost': [23, 51], 'LightGBMLarge': [51, 83]}
+
     filtrar_mejores_modelos = st.checkbox("Mejores modelos", value=True)
 
     df_metrics_filtrado = df_metrics.copy()
@@ -57,7 +59,7 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
         with tabs[i]:
             st.markdown(f"### Métricas por semilla para el modelo: **{modelo}**")
             df_modelo = df_metrics_filtrado[df_metrics_filtrado['ModelBase'] == modelo]
-
+            
             # Boxplot por semilla
             chart_modelo = alt.Chart(df_modelo).mark_boxplot(extent='min-max').encode(
                 x='Seed:O', 
@@ -87,27 +89,31 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             st.dataframe(df_configs)
 
             # Ranking de configuraciones
-            df_unique = df_modelo_testset.groupby("hyperparameters").agg(
-                mean_metric=(metrica_seleccionada, "mean"),
-                std_metric=(metrica_seleccionada, "std")
-            ).reset_index()
-            df_unique["config_id"] = [f"conf{i+1}" for i in range(len(df_unique))]
+            # Ranking de configuraciones SOLO si hay más de una
+            if df_modelo_testset["hyperparameters"].nunique() > 1:
+                # Agrupar por configuraciones únicas
+                df_unique = df_modelo_testset.groupby("hyperparameters").agg(
+                    mean_metric=(metrica_seleccionada, "mean"),
+                    std_metric=(metrica_seleccionada, "std")
+                ).reset_index()
+                df_unique["config_id"] = [f"conf{i+1}" for i in range(len(df_unique))]
 
-            bars = alt.Chart(df_unique).mark_bar().encode(
-                x=alt.X("config_id:N", title="Configuración"),
-                y=alt.Y("mean_metric:Q", title=f"Media de {metrica_seleccionada}", scale=alt.Scale(zero=False)),
-                tooltip=["config_id", "mean_metric:Q", "std_metric:Q"]
-            )
+                # Gráfica de barras
+                bars = alt.Chart(df_unique).mark_bar().encode(
+                    x=alt.X("config_id:N", title="Configuración"),
+                    y=alt.Y("mean_metric:Q", title=f"Media de {metrica_seleccionada}", scale=alt.Scale(zero=False)),
+                    tooltip=["config_id", "mean_metric:Q", "std_metric:Q"]
+                )
+                st.altair_chart(bars, use_container_width=True)
 
-            st.altair_chart(bars, use_container_width=True)
-            # Mejor configuración
-            best_config = df_unique.loc[df_unique['mean_metric'].idxmax()]
+                # Mejor configuración
+                best_config = df_unique.loc[df_unique['mean_metric'].idxmax()]
 
-            st.write(f"##### Mejor configuración según {metrica_seleccionada}")
-            st.write("ID de configuración:", best_config['config_id'])
-            st.write("Hiperparámetros:", best_config['hyperparameters'])
-            st.markdown(f"### Importancia de las variables para el: **{modelo}**")
-
+                st.write(f"##### Mejor configuración según {metrica_seleccionada}")
+                st.write("ID de configuración:", best_config['config_id'])
+                st.write("Hiperparámetros:", best_config['hyperparameters'])
+            
+            st.markdown(f"### Inportancia de las variables por: **{modelo}**")
             # Filtrar filas
             df_modelo = df_feature_importance[df_feature_importance["model"] == modelo]
             #  Seleccionar más relevantes
@@ -154,5 +160,52 @@ def visualizar(df_metrics, mejores_modelos, df_leaderboard_testset,df_feature_im
             )
 
             st.altair_chart(barra_importancia, use_container_width=True)
-
+        ##   Análisis del Roc_auc por Fold para el modelo
             st.markdown(f"### Análisis del Roc_auc por Fold para el: **{modelo}**")
+            semillas = sorted(df_modelo_testset["seed"].unique())
+            default_semillas = mejores_semillas.get(modelo, semillas[:2]) 
+            semillas_sel = st.multiselect(
+                "Selecciona las semillas (mejores semillas por defecto):",
+                semillas,
+                default=default_semillas,
+                key=f'semillas_{modelo}'
+            )
+            df_modelo_testset=df_modelo_testset[df_modelo_testset['seed'].isin(semillas_sel)]
+
+            charts = []
+            
+            for nF in sorted(df_modelo_testset["nF"].unique()):
+                df_nF = df_modelo_testset[df_modelo_testset["nF"] == nF]
+                df_metrics_filtrado_nF = df_metrics_filtrado[df_metrics_filtrado["nF"] == nF]
+                base = alt.Chart(df_nF).mark_point(size=50).encode(
+                    x=alt.X('fold:N', title='Fold'),
+                    y=alt.Y('Roc_auc', title='ROC AUC (fold)', scale=alt.Scale(zero=False)),
+                    color=alt.Color('model', legend=alt.Legend(title="Réplicas")),
+                    shape=alt.Shape("seed:N", legend=alt.Legend(title="Semilla")),
+                    tooltip=['fold', 'Roc_auc', 'model']
+                ).transform_filter(
+                    alt.datum.fold <= alt.datum.nF
+                ).properties(
+                    width=200,
+                    height=200
+                )
+                roc_mean = df_metrics_filtrado_nF ["Roc_auc"].mean()  # media de todos los valores
+                line = alt.Chart(pd.DataFrame({"Roc_auc": [roc_mean]})).mark_rule(
+                    color="black",
+                    strokeDash=[4, 2]   # línea discontinua
+                ).encode(
+                    y="Roc_auc:Q",
+                    tooltip=["Roc_auc:Q"]
+                )
+
+                charts.append(
+                    alt.layer(base,line).properties(title=f"nF = {nF}")
+                )
+            final_chart = alt.vconcat(*charts).properties(
+            title=f"Rendimiento por nF para el modelo: {modelo}")
+
+            st.altair_chart(final_chart, use_container_width=True)
+        ##   Análisis del Roc_auc por Fold para el modelo
+        st.markdown(f"### Errores de clasificación por modelo: **{modelo}**")
+
+ 

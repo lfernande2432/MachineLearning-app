@@ -59,7 +59,7 @@ with tabs[3]:
 with tabs[4]:
     st.header("4. Visualización")
     mejores_semillas = {'RandomForest': [42, 51], 'RandomForestEntr':[27431,23], 'RandomForestGini':[27431, 100],  'CatBoost': [23, 51], 'LightGBMLarge': [51, 83]}
-    visualizar(df_metrics,mejores_modelos, df_leaderboard_testset, df_feature_importance)
+    visualizar(df_metrics,mejores_modelos, df_leaderboard_testset, df_feature_importance,df_test_pred)
 
 with tabs[5]:
   st.header("5. Conclusiones")
