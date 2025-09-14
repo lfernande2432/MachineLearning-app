@@ -77,7 +77,8 @@ def SO2(df_metrics):
     )
 
 def SO3(df_leaderboard_testset):
-    df_leaderboard_testset['model_simplified'] = df_leaderboard_testset['model'].str.split('_').str[0]
+    df_leaderboard_testset = df_leaderboard_testset.copy()
+    df_leaderboard_testset.loc[:, 'model_simplified'] = df_leaderboard_testset['model'].str.split('_').str[0]
     modelos = sorted(df_leaderboard_testset['model_simplified'].unique())
     modelo_sel = st.selectbox("Selecciona un modelo:", modelos)
     df_modelo = df_leaderboard_testset[df_leaderboard_testset['model_simplified'] == modelo_sel].copy()
@@ -416,9 +417,7 @@ def procesar(df_feature_importance, df_metrics, df_test_pred, df_feature_importa
         SO5( df_leaderboard_testset,df_metrics)
     # --- Objetivo 6: Análisis de errores y casos difíciles  ---
     with st.expander("**3.6. Análisis de errores y casos difíciles (SO6)**", expanded=False):
-        st.markdown("""
-        El análisis de errores y casos difíciles nos ayuda a comprender mejor las limitaciones del modelo y las áreas donde puede necesitar mejoras. Al identificar patrones en los errores, podemos ajustar el modelo o los datos para abordar estos desafíos específicos, mejorando así la precisión y la confiabilidad del modelo en situaciones del mundo real.
-        """)
+
         SO6(df_test_pred,mejores_modelos)
     return mejores_modelos
 
