@@ -7,7 +7,7 @@ from my_app.leer_datos import cargar_datos
 from my_app.preparacion import preparar_datos
 from my_app.procesado import procesar
 from my_app.visualizacion import visualizar
-from my_app.conclusiones import conslusion
+from my_app.conclusiones import conclusion 
 base_path = "dataset"
 
 
@@ -64,4 +64,4 @@ with tabs[4]:
 
 with tabs[5]:
   st.header("5. Conclusiones")
-  conslusion()
+  conclusion()
