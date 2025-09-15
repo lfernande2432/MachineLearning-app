@@ -323,6 +323,9 @@ def graficar_predicciones_por_instancia(df_pred):
     )
     df_melt["Modelo"] = df_melt["Modelo"].str.replace("pred_", "")
     
+    # Crear columna del modelo base (sin réplica)
+    df_melt["ModeloBase"] = df_melt["Modelo"].str.replace(r"_r\d+$", "", regex=True)
+    
     # Columna de error
     df_melt["Error"] = (df_melt["Prediccion"] != df_melt["ED_2Clases"]).astype(int)
     
@@ -330,20 +333,25 @@ def graficar_predicciones_por_instancia(df_pred):
     instancia_seleccionada = st.selectbox("Selecciona la instancia (etiq-id):", df_melt["etiq-id"].unique())
     df_filtrado = df_melt[df_melt["etiq-id"] == instancia_seleccionada]
     
-    # Contar cuántas veces cada modelo predice cada etiqueta
-    counts = df_filtrado.groupby(["Modelo", "Prediccion"]).size().reset_index(name="Freq")
-    df_filtrado = df_filtrado.merge(counts, on=["Modelo", "Prediccion"], how="left")
+    # Checkbox para elegir vista
+    vista_por_replicas = st.checkbox("Mostrar por réplica", value=False)
     
-    # Círculos: predicciones de los modelos con degradado por frecuencia
+    # Definir columna en eje X según la vista
+    eje_x = "Modelo" if vista_por_replicas else "ModeloBase"
+    
+    # Contar cuántas veces cada modelo (o modelo base) predice cada etiqueta
+    counts = df_filtrado.groupby([eje_x, "Prediccion"]).size().reset_index(name="Freq")
+    df_filtrado = df_filtrado.merge(counts, on=[eje_x, "Prediccion"], how="left")
+    
+    # Gráfico de predicciones
     pred_chart = alt.Chart(df_filtrado).mark_circle(size=150).encode(
-        x=alt.X('Modelo:N', title='Modelo'),
-        y=alt.Y('Prediccion:O', title='Predicción (0/1)', sort=[0,1]),
-        color=alt.Color('Error:N', title='Predicciones', scale=alt.Scale(domain=[0,1], range=['green','red'])),
-        opacity=alt.Opacity('Freq:Q', scale=alt.Scale(range=[0.2,1]), legend=None),  # sin leyenda
-        tooltip=['etiq-id', 'Modelo', 'Prediccion', 'ED_2Clases', 'Error', 'Freq']
+        x=alt.X(f'{eje_x}:N', title='Modelo'),
+        y=alt.Y('Prediccion:O', title='Predicción (0/1)', sort=[0, 1]),
+        color=alt.Color('Error:N', title='Predicciones', scale=alt.Scale(domain=[0, 1], range=['green', 'red'])),
+        opacity=alt.Opacity('Freq:Q', scale=alt.Scale(range=[0.2, 1]), legend=None),
+        tooltip=['etiq-id', 'Modelo', 'ModeloBase', 'Prediccion', 'ED_2Clases', 'Error', 'Freq']
     )
     
-    # Solo el gráfico de predicciones (sin línea)
     chart = pred_chart.properties(
         width=700,
         height=300,
